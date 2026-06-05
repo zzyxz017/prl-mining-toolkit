@@ -67,10 +67,10 @@ def compute_holdings():
             holdings[e.base_coin] += e.amount
             holdings[e.quote_coin] -= e.total
 
-    # Transfers (move coins between exchanges, deduct fees)
+    # Transfers: net effect is deducting the fee (amount sent - received = fee)
     for e in load_transfers():
         coin = e.coin
-        holdings[coin] -= e.fee_amount  # transfer fee deducted
+        holdings[coin] -= e.fee_amount
 
     return holdings
 
@@ -248,32 +248,53 @@ def calc_daily_mining(coin, coins_mined, price, power, elec_price, time_h):
 
 
 def calc_trade_net(entry):
-    # Compute fee_usd from fee_coin and fee_amount.
-    # The fee is always in the quote coin (the "new" coin received in the trade).
-    # Conversion to USD:
-    #   - Stablecoins (USDT, USD, EUR): 1 unit ≈ 1 USD
-    #   - Crypto: derive USD price from the trade itself if base is a stablecoin,
-    #     otherwise use stored price.  price = quote_coin per base_coin.
-    #     If base is USDT/USD/EUR: 1 quote = (1/price) USD
+    """Compute fee_usd and net_usd for a trade entry.
+
+    For Sell trades: net = total received in quote coin (after fee)
+    For Buy trades: net = amount received in base coin (after fee)
+    fee_usd is always the fee converted to USD for summary purposes.
+    net_usd for sells = total - fee (in USDT/stable)
+    net_usd for buys = amount * price_of_base_in_usd (value of what you received)
+    """
+    # Determine received coin and amount
+    if entry.side == "Sell":
+        recv_coin = entry.quote_coin
+        recv_amount = entry.total
+    else:
+        recv_coin = entry.base_coin
+        recv_amount = entry.amount
+
+    # Compute fee_usd
     if not entry.fee_coin:
         entry.fee_coin = entry.quote_coin or "USDT"
     if entry.fee_amount > 0:
         if entry.fee_coin.upper() in ("USDT", "USD", "EUR"):
             entry.fee_usd = entry.fee_amount
         elif entry.base_coin.upper() in ("USDT", "USD", "EUR") and entry.price > 0:
-            # price = quote_coin per base_coin, base is stable => 1 quote = (1/price) USD
             entry.fee_usd = entry.fee_amount / entry.price
         elif entry.total > 0 and entry.amount > 0:
-            # total / amount = effective price in quote coin per base coin
-            # If quote is USD-stable, fee_usd = fee_amount
-            # Otherwise approximate: use total as USD proxy (best-effort for stable-quote pairs)
-            entry.fee_usd = entry.fee_amount  # assume quote ≈ USD (common case: PRL/USDT)
+            entry.fee_usd = entry.fee_amount
         else:
             entry.fee_usd = 0
     else:
         entry.fee_usd = 0
-    if entry.total > 0:
-        entry.net_usd = entry.total - entry.fee_usd
+
+    # Net in received coin
+    fee_in_recv = entry.fee_amount if entry.fee_coin == recv_coin else 0
+    net_recv = recv_amount - fee_in_recv if fee_in_recv else recv_amount
+
+    # net_usd: for summary purposes
+    if entry.side == "Sell":
+        # Received USDT/stable, net_usd = net received
+        entry.net_usd = net_recv
+    else:
+        # Bought base_coin with quote_coin
+        # net_usd = value of what you received (amount * price in USD)
+        # For USDT/ARB buy: price is ARB/USDT, so 1 ARB = (1/price) USD... 
+        # Actually we don't have ARD price here. Use total spent as proxy.
+        # The real value is the amount received; we'll show it in the coin.
+        entry.net_usd = -entry.total  # negative = spent
+
     # drag % = (basis - amount) / basis * 100
     if entry.basis > 0 and entry.amount > 0:
         entry.drag_pct = round((entry.basis - entry.amount) / entry.basis * 100, 3)
@@ -439,8 +460,12 @@ class PRLMiningApp:
         self.banner_frame = ttk.Frame(root, padding=6)
         self.banner_frame.pack(fill="x", padx=4, pady=(4, 0))
 
+        # === ROW 1: Holdings + Exchange breakdown ===
+        row1 = ttk.Frame(self.banner_frame)
+        row1.pack(fill="x", pady=(0, 4))
+
         # Holdings section
-        holdings_inner = ttk.LabelFrame(self.banner_frame, text="  Current Holdings  ", padding=6)
+        holdings_inner = ttk.LabelFrame(row1, text="  Current Holdings  ", padding=6)
         holdings_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
         self.banner_holdings = {}
@@ -451,7 +476,7 @@ class PRLMiningApp:
             self.banner_holdings[coin] = lbl
 
         # Exchange breakdown
-        exch_inner = ttk.LabelFrame(self.banner_frame, text="  By Exchange  ", padding=6)
+        exch_inner = ttk.LabelFrame(row1, text="  By Exchange  ", padding=6)
         exch_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
 
         self.banner_exchanges = {}
@@ -461,8 +486,29 @@ class PRLMiningApp:
             lbl.grid(row=0, column=i * 2 + 1, padx=(0, 4), pady=2)
             self.banner_exchanges[exch] = lbl
 
+        # === ROW 2: Breakeven + Pipeline ===
+        row2 = ttk.Frame(self.banner_frame)
+        row2.pack(fill="x")
+
+        # Breakeven section — live from last daily entry
+        be_inner = ttk.LabelFrame(row2, text="  Breakeven (last day)  ", padding=6)
+        be_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
+        self.banner_be_labels = {}
+        be_fields = [
+            ("be_price", "BE Price:", "$—"),
+            ("be_coins", "BE Coins:", "—"),
+            ("tokens_above", "Above BE:", "—"),
+            ("margin", "Margin:", "—"),
+        ]
+        for i, (key, lbl_text, dflt) in enumerate(be_fields):
+            ttk.Label(be_inner, text=lbl_text, font=("Segoe UI", 9, "bold")).grid(row=0, column=i * 2, padx=(4, 1), pady=2)
+            lbl = ttk.Label(be_inner, text=dflt, font=("Consolas", 10), width=14, anchor="e")
+            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 6), pady=2)
+            self.banner_be_labels[key] = lbl
+
         # Pipeline position
-        pos_inner = ttk.LabelFrame(self.banner_frame, text="  Pipeline Status  ", padding=6)
+        pos_inner = ttk.LabelFrame(row2, text="  Pipeline Status  ", padding=6)
         pos_inner.pack(side="left", fill="x", expand=True)
 
         self.banner_position = ttk.Label(pos_inner, text="—", font=("Segoe UI", 10), foreground="#4E342E", wraplength=340, anchor="w")
@@ -502,14 +548,24 @@ class PRLMiningApp:
             return 0.0
 
     def _refresh_banner(self):
-        """Update the banner with current holdings and pipeline position."""
-        from mining_toolkit_win import compute_holdings, compute_exchange_holdings, get_pipeline_position
+        """Update the banner with current holdings, breakeven, and pipeline position."""
+        from mining_toolkit_win import (
+            compute_holdings, compute_exchange_holdings, get_pipeline_position,
+            get_last_daily_entry, compute_breakeven_price,
+            DEFAULT_PRL_USDT_FEE_PCT, DEFAULT_USDT_ARB_FEE_PCT,
+            DEFAULT_ARB_USD_FEE_PCT, DEFAULT_ARB_USD_FLAT_FEE,
+            DEFAULT_ARB_TRANSFER_FEE, compute_step_drag_sales,
+        )
 
         # Total holdings
         h = compute_holdings()
         for coin, lbl in self.banner_holdings.items():
             val = h.get(coin, 0.0)
             lbl.config(text=f"{val:,.4f}")
+
+        # Pipeline position
+        pos = get_pipeline_position()
+        self.banner_position.config(text=pos)
 
         # Exchange breakdown
         ex = compute_exchange_holdings()
@@ -522,9 +578,57 @@ class PRLMiningApp:
                     parts.append(f"{coin}:{v:,.2f}")
             lbl.config(text="  ".join(parts) if parts else "empty")
 
-        # Pipeline position
-        pos = get_pipeline_position()
-        self.banner_position.config(text=pos)
+        # --- Breakeven from last daily mining entry ---
+        last = get_last_daily_entry()
+        if last:
+            # Use a default ARB price (can be made configurable later)
+            arb_usd = 0.30  # default; user can adjust on Profitability tab
+            elec_cost = (last.power * last.time_hours / 1000.0) * last.elec_price
+            coins_mined = last.coins_mined
+
+            drag1 = compute_step_drag_sales("PRL/USDT")
+            drag2 = compute_step_drag_sales("USDT/ARB")
+            drag3 = compute_step_drag_sales("ARB/USD")
+            d1 = 1.0 - drag1 / 100.0
+            d2 = 1.0 - drag2 / 100.0
+            d3 = 1.0 - drag3 / 100.0
+            f1 = 1.0 - DEFAULT_PRL_USDT_FEE_PCT / 100.0
+            f2 = 1.0 - DEFAULT_USDT_ARB_FEE_PCT / 100.0
+            f3 = 1.0 - DEFAULT_ARB_USD_FEE_PCT / 100.0
+
+            be_price, _, _, _ = compute_breakeven_price(
+                arb_usd, elec_cost, coins_mined,
+                d1, d2, d3, f1, f2, f3,
+                DEFAULT_ARB_USD_FLAT_FEE, DEFAULT_ARB_TRANSFER_FEE)
+
+            # Breakeven coins for this day's params at current price
+            chain_eff = d1 * f1 * d2 * f2 * d3 * f3
+            flat_per_coin = (DEFAULT_ARB_TRANSFER_FEE * arb_usd + DEFAULT_ARB_USD_FLAT_FEE) / coins_mined if coins_mined > 0 else 0
+            be_coins = elec_cost / (last.price * chain_eff - flat_per_coin) if (last.price * chain_eff - flat_per_coin) > 0 else float('inf')
+            tokens_above = coins_mined - be_coins
+
+            # Margin: profit as % of electricity
+            effective_usd = last.price * chain_eff - flat_per_coin
+            net_per_coin = effective_usd - (elec_cost / coins_mined) if coins_mined > 0 else 0
+            total_net = net_per_coin * coins_mined
+            margin_pct = (total_net / elec_cost * 100.0) if elec_cost > 0 else 0.0
+
+            # Update labels with color coding
+            self.banner_be_labels["be_price"].config(text=f"${be_price:.4f}")
+            self.banner_be_labels["be_coins"].config(text=f"{be_coins:.1f} PRL")
+
+            # Tokens above BE: green if positive, red if negative
+            above_color = "#2E7D32" if tokens_above >= 0 else "#C62828"
+            self.banner_be_labels["tokens_above"].config(
+                text=f"{tokens_above:+.1f} PRL", foreground=above_color)
+
+            # Margin: green if positive, red if negative
+            margin_color = "#2E7D32" if margin_pct >= 0 else "#C62828"
+            self.banner_be_labels["margin"].config(
+                text=f"{margin_pct:+.1f}%", foreground=margin_color)
+        else:
+            for key in self.banner_be_labels:
+                self.banner_be_labels[key].config(text="—", foreground="black")
 
     def _sort_treeview(self, tree, col, reverse):
         """Sort a treeview column by clicking the heading.
@@ -1271,7 +1375,7 @@ class PRLMiningApp:
         for c, h, w in [("date","Date",120),("pair","Pair",70),("side","Side",45),("type","Type",55),
                         ("status","Status",65),("exchange","Exchange",75),("price","Price",75),
                         ("basis","Basis",70),("amount","Traded",70),("drag","Drag%",55),
-                        ("total","Total",80),("fee","Fee",85),("net","Net $",80)]:
+                        ("total","Total",80),("fee","Fee",85),("net","Net Recv",80)]:
             self.sales_tree.heading(c, text=h, command=lambda _c=c: self._sort_treeview(self.sales_tree, _c, False))
             self.sales_tree.column(c, width=w)
         self.sales_tree.pack(fill="both", expand=True, padx=4, pady=4)
@@ -1435,6 +1539,8 @@ class PRLMiningApp:
             tag = "canceled" if e.status == "Canceled" else ("partial" if e.status == "Partial" else ("buy" if e.side == "Buy" else "filled"))
             pair = f"{e.base_coin}/{e.quote_coin}"
             drag_str = f"{e.drag_pct:.3f}%" if e.basis > 0 else "—"
+
+            # Fee string
             fee_coin = getattr(e, 'fee_coin', None) or e.quote_coin or "USDT"
             fee_amt = getattr(e, 'fee_amount', None) if hasattr(e, 'fee_amount') else None
             if fee_amt is not None and fee_amt > 0:
@@ -1442,21 +1548,41 @@ class PRLMiningApp:
             elif e.fee_usd > 0:
                 fee_str = f"${e.fee_usd:.4f}"
             else:
-                fee_str = "$0.00"
-            self.sales_tree.insert("", "end", values=(
-                e.date, pair, e.side, e.order_type, e.status, e.exchange,
-                f"{e.price:.6f}", f"{e.basis:.4f}", f"{e.amount:.4f}", drag_str,
-                f"{e.total:.4f}", fee_str, f"${e.net_usd:.4f}",
-            ), tags=(tag,))
-            total_net += e.net_usd
-            total_fee += e.fee_usd
+                fee_str = "—"
+
+            # Net received: what you actually got after fees, in the received coin
+            if e.side == "Sell":
+                # Sold base_coin, received quote_coin (total), fee in quote_coin
+                recv_coin = e.quote_coin
+                fee_in_recv = fee_amt if fee_coin == recv_coin else e.fee_usd
+                net_recv = e.total - fee_in_recv if fee_in_recv else e.total
+                net_str = f"{net_recv:.4f} {recv_coin}"
+                total_net += net_recv  # accumulate in USDT for summary
+                total_fee += fee_in_recv if fee_in_recv else 0
+            else:
+                # Bought base_coin with quote_coin, received base_coin (amount), fee in base_coin
+                recv_coin = e.base_coin
+                fee_in_recv = fee_amt if fee_coin == recv_coin else 0
+                net_recv = e.amount - fee_in_recv if fee_in_recv else e.amount
+                net_str = f"{net_recv:.4f} {recv_coin}"
+                # For buys, total_net tracks the USDT spent (for summary)
+                total_net -= e.total
+                total_fee += fee_in_recv if fee_in_recv else 0
+
             if e.basis > 0 and e.amount > 0:
                 total_drag += (e.basis - e.amount)
             pair_stats[pair] = pair_stats.get(pair, 0) + e.amount
+
+            self.sales_tree.insert("", "end", values=(
+                e.date, pair, e.side, e.order_type, e.status, e.exchange,
+                f"{e.price:.6f}", f"{e.basis:.4f}", f"{e.amount:.4f}", drag_str,
+                f"{e.total:.4f}", fee_str, net_str,
+            ), tags=(tag,))
+
         pair_summary = "  ".join(f"{p}: {a:.2f}" for p, a in sorted(pair_stats.items()))
         self.sales_summary.config(
             text=f"  Trades: {len(entries)}  |  {pair_summary}  |  "
-                 f"Net USD: ${total_net:.4f}  |  Fees: ${total_fee:.4f}  |  Drag coins: {total_drag:.4f}"
+                 f"Net flow: ${total_net:+.4f}  |  Fees: ${total_fee:.4f}  |  Drag coins: {total_drag:.4f}"
         )
 
     # ==========================================================
