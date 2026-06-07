@@ -1,0 +1,38 @@
+[
+  {
+    "date": "2026-05-28",
+    "coin": "PRL",
+    "coins_mined": 0.1947,
+    "price": 1.0,
+    "power": 800.0,
+    "elec_price": 0.15,
+    "time_hours": 1.0,
+    "gross_revenue": 0.1947,
+    "electricity_cost": 0.12,
+    "net_profit": 0.07470000000000002
+  },
+  {
+    "date": "2026-05-29",
+    "coin": "PRL",
+    "coins_mined": 9.5473,
+    "price": 0.85,
+    "power": 1100.0,
+    "elec_price": 0.15,
+    "time_hours": 12.0,
+    "gross_revenue": 8.115205,
+    "electricity_cost": 1.9799999999999998,
+    "net_profit": 6.135205
+  },
+  {
+    "date": "2026-05-30",
+    "coin": "PRL",
+    "coins_mined": 17.7294,
+    "price": 0.85,
+    "power": 1100.0,
+    "elec_price": 0.15,
+    "time_hours": 24.0,
+    "gross_revenue": 15.069989999999999,
+    "electricity_cost": 3.9599999999999995,
+    "net_profit": 11.10999
+  }
+]

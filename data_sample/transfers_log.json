@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-05-31",
+    "coin": "ARB",
+    "from_exchange": "SafeTrade",
+    "to_exchange": "Coinbase",
+    "amount": 7.99,
+    "fee_coin": "ARB",
+    "fee_amount": 2.0,
+    "received": 5.99,
+    "notes": "",
+    "status": "Completed"
+  },
+  {
+    "date": "2026-05-31",
+    "coin": "ARB",
+    "from_exchange": "SafeTrade",
+    "to_exchange": "Coinbase",
+    "amount": 242.81494,
+    "fee_coin": "ARB",
+    "fee_amount": 2.0,
+    "received": 240.81494,
+    "notes": "",
+    "status": "Completed"
+  }
+]
