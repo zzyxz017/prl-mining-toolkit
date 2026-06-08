@@ -448,27 +448,179 @@ def compute_step_drag_sales(pair_str):
 class PRLMiningApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("prl_mining_toolkit")
+        self.root.title("PRL Mining Toolkit")
         self.root.geometry("1280x820")
-        self.root.minsize(1024, 680)
+        self.root.minsize(720, 520)
 
+        # ── Modern theme ──────────────────────────────────────────
         style = ttk.Style()
-        style.theme_use("clam")
 
-        # Increase default font sizes by 20%
-        default_font = ("Segoe UI", 10)
-        style.configure(".", font=default_font)
-        style.configure("TLabel", font=("Segoe UI", 12))
-        style.configure("TButton", font=("Segoe UI", 12))
-        style.configure("TEntry", font=("Segoe UI", 12))
-        style.configure("TCombobox", font=("Segoe UI", 12))
-        style.configure("Treeview", font=("Consolas", 12), rowheight=26)
-        style.configure("Treeview.Heading", font=("Segoe UI", 12, "bold"))
-        style.configure("TNotebook.Tab", font=("Segoe UI", 13, "bold"))
-        style.configure("TLabelframe.Label", font=("Segoe UI", 12, "bold"))
+        # Pick the best available native theme
+        available = style.theme_names()
+        # Prefer clam for full color control on dark theme
+        if "clam" in available:
+            style.theme_use("clam")
+        else:
+            for preferred in ("vista", "xpnative", "winnative"):
+                if preferred in available:
+                    style.theme_use(preferred)
+                    break
+
+        # ── Color palette (very dark grey + red accents) ──────────
+        C = {
+            "bg":           "#111111",   # near-black background
+            "surface":      "#1A1A1A",   # card / frame bg
+            "surface2":     "#222222",   # elevated surface
+            "border":       "#333333",   # subtle borders
+            "text":         "#E0E0E0",   # primary text (light grey)
+            "text_alt":     "#888888",   # secondary / muted text
+            "accent":       "#DC2626",   # red accent
+            "accent_hover": "#EF4444",
+            "success":       "#34D399",  # emerald green (kept for stats)
+            "danger":        "#F87171",  # soft red (kept for stats)
+            "warning":       "#FBBF24",  # amber (kept for stats)
+            "info":          "#60A5FA",  # sky blue (kept for stats)
+            "row_alt":       "#161616",  # alternating row bg
+            "select_bg":     "#7F1D1D",  # dark red selection
+            "select_fg":     "#FCA5A5",
+        }
+
+        # ── Global defaults ───────────────────────────────────────
+        style.configure(".",
+            font=("Segoe UI", 10),
+            background=C["bg"],
+            foreground=C["text"],
+            bordercolor=C["border"],
+            troughcolor=C["border"],
+            selectbackground=C["select_bg"],
+            selectforeground=C["select_fg"],
+            focuscolor=C["accent"],
+        )
+
+        # ── Frames ────────────────────────────────────────────────
+        style.configure("TLabel",       font=("Segoe UI", 11), background=C["bg"], foreground=C["text"])
+        style.configure("TFrame",       background=C["bg"])
+        style.configure("TLabelframe",  background=C["surface"], foreground=C["text"],
+                                         borderwidth=1, relief="solid")
+        style.configure("TLabelframe.Label",
+                                         font=("Segoe UI", 11, "bold"),
+                                         foreground=C["accent"],
+                                         background=C["surface"])
+        # Fix clam theme's labelframe interior (field area)
+        style.configure("TLabelframe.Field", background=C["surface"])
+
+        # ── Buttons ───────────────────────────────────────────────
+        # Custom dark button style with visible red text
+        style.configure("TButton",
+            font=("Segoe UI", 11, "bold"),
+            padding=(14, 7),
+            background="#2A2A2A",
+            foreground="#FF4444",
+            borderwidth=1,
+        )
+        style.map("TButton",
+            background=[("active", "#333333"), ("pressed", "#1A1A1A")],
+            foreground=[("active", "#FF6666"), ("pressed", "#CC0000")],
+        )
+
+        # ── Entry / Combobox ─────────────────────────────────────
+        style.configure("TEntry",
+            font=("Segoe UI", 11),
+            padding=(8, 5),
+            fieldbackground=C["surface"],
+            bordercolor=C["border"],
+            lightcolor=C["surface"],
+            darkcolor=C["border"],
+        )
+        style.configure("TCombobox",
+            font=("Segoe UI", 11),
+            padding=(8, 5),
+            fieldbackground=C["surface"],
+            background=C["surface"],
+            bordercolor=C["border"],
+        )
+        style.map("TCombobox",
+            fieldbackground=[("readonly", C["surface"])],
+            selectbackground=[("readonly", C["select_bg"])],
+        )
+
+        # ── Treeview ──────────────────────────────────────────────
+        style.configure("Treeview",
+            font=("Consolas", 11),
+            rowheight=28,
+            background=C["surface"],
+            foreground=C["text"],
+            fieldbackground=C["surface"],
+            borderwidth=0,
+        )
+        style.configure("Treeview.Heading",
+            font=("Segoe UI", 10, "bold"),
+            padding=(6, 4),
+            background="#1E1E1E",
+            foreground="#CCCCCC",
+            borderwidth=0,
+        )
+        style.map("Treeview",
+            background=[("selected", C["select_bg"])],
+            foreground=[("selected", C["select_fg"])],
+        )
+
+        # ── Notebook (tabs) ───────────────────────────────────────
+        style.configure("TNotebook",
+            background=C["bg"],
+            borderwidth=0,
+            tabmargins=(0, 0, 0, 0),
+        )
+        style.configure("TNotebook.Tab",
+            font=("Segoe UI", 11, "bold"),
+            padding=(16, 10),
+            foreground="#888888",
+            background="#1A1A1A",
+            borderwidth=0,
+        )
+        style.map("TNotebook.Tab",
+            foreground=[("selected", "#FFFFFF"), ("active", "#CCCCCC")],
+            background=[("selected", "#DC2626"), ("active", "#2A2A2A")],
+            expand=[("selected", [1, 1, 1, 0])],
+        )
+        # Remove the default dashed focus ring on tabs
+        style.layout("TNotebook.Tab", [
+            ("Notebook.tab", {"sticky": "nswe", "children": [
+                ("Notebook.padding", {"sticky": "nswe", "children": [
+                    ("Notebook.label", {"sticky": "nswe"})
+                ]})
+            ]})
+        ])
+
+        # ── Separator ─────────────────────────────────────────────
+        style.configure("TSeparator", background=C["border"])
+
+        # ── PanedWindow ───────────────────────────────────────────
+        style.configure("TPanedWindow", background=C["bg"])
+        style.configure("Sash", sashthickness=4, background=C["border"])
+
+        # ── Scrollbar ─────────────────────────────────────────────
+        style.configure("Vertical.TScrollbar",
+            troughcolor=C["bg"],
+            background="#444444",
+            borderwidth=0,
+            arrowsize=12,
+        )
+        style.map("Vertical.TScrollbar",
+            background=[("active", "#555555")],
+        )
+        style.configure("Horizontal.TScrollbar",
+            troughcolor=C["bg"],
+            background="#444444",
+            borderwidth=0,
+            arrowsize=12,
+        )
+
+        # Store colours for use elsewhere
+        self._c = C
 
         # ==========================================================
-        # BANNER — Holdings + Pipeline Position
+        # BANNER — Holdings + Breakeven
         # ==========================================================
         self.banner_frame = ttk.Frame(root, padding=6)
         self.banner_frame.pack(fill="x", padx=4, pady=(4, 0))
@@ -476,43 +628,51 @@ class PRLMiningApp:
         # === ROW 1: Per-exchange holdings ===
         row1 = ttk.Frame(self.banner_frame)
         row1.pack(fill="x", pady=(0, 4))
+        row1.grid_columnconfigure(0, weight=1)
+        row1.grid_columnconfigure(1, weight=1)
+        row1.grid_columnconfigure(2, weight=1)
 
         # SafeTrade
         st_inner = ttk.LabelFrame(row1, text="  SafeTrade  ", padding=6)
-        st_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        st_inner.grid(row=0, column=0, sticky="nsew", padx=(0, 3))
 
         self.banner_st = {}
         for i, coin in enumerate(["PRL", "USDT", "ARB"]):
-            ttk.Label(st_inner, text=coin + ":", font=("Segoe UI", 12, "bold")).grid(row=0, column=i * 2, padx=(4, 1), pady=2)
-            lbl = ttk.Label(st_inner, text="—", font=("Consolas", 13), foreground="#2E7D32", width=14, anchor="e")
-            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 8), pady=2)
+            ttk.Label(st_inner, text=coin + ":", font=("Segoe UI", 10, "bold")).grid(row=0, column=i * 2, padx=(2, 1), pady=2)
+            lbl = ttk.Label(st_inner, text="—", font=("Consolas", 12, "bold"), foreground=C["success"], anchor="e")
+            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 4), pady=2)
             self.banner_st[coin] = lbl
+        for j in range(6):
+            st_inner.grid_columnconfigure(j, weight=1)
 
         # Coinbase
         cb_inner = ttk.LabelFrame(row1, text="  Coinbase  ", padding=6)
-        cb_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        cb_inner.grid(row=0, column=1, sticky="nsew", padx=(0, 3))
 
         self.banner_cb = {}
         for i, coin in enumerate(["USDT", "ARB", "USD"]):
-            ttk.Label(cb_inner, text=coin + ":", font=("Segoe UI", 12, "bold")).grid(row=0, column=i * 2, padx=(4, 1), pady=2)
-            lbl = ttk.Label(cb_inner, text="—", font=("Consolas", 13), foreground="#1565C0", width=14, anchor="e")
-            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 8), pady=2)
+            ttk.Label(cb_inner, text=coin + ":", font=("Segoe UI", 10, "bold")).grid(row=0, column=i * 2, padx=(2, 1), pady=2)
+            lbl = ttk.Label(cb_inner, text="—", font=("Consolas", 12, "bold"), foreground=C["info"], anchor="e")
+            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 4), pady=2)
             self.banner_cb[coin] = lbl
+        for j in range(6):
+            cb_inner.grid_columnconfigure(j, weight=1)
 
         # Total USD value
         usd_inner = ttk.LabelFrame(row1, text="  Total USD Value  ", padding=6)
-        usd_inner.pack(side="left", fill="x", expand=True)
+        usd_inner.grid(row=0, column=2, sticky="nsew")
 
-        self.banner_usd_val = ttk.Label(usd_inner, text="—", font=("Consolas", 14, "bold"), foreground="#4E342E", anchor="center")
-        self.banner_usd_val.pack(fill="x", padx=4, pady=4)
+        self.banner_usd_val = ttk.Label(usd_inner, text="—", font=("Consolas", 13, "bold"), foreground=C["text"], anchor="center")
+        self.banner_usd_val.pack(fill="x", padx=2, pady=2)
 
         # === ROW 2: Breakeven + Pipeline ===
         row2 = ttk.Frame(self.banner_frame)
         row2.pack(fill="x")
+        row2.grid_columnconfigure(0, weight=1)
 
         # Breakeven section — live from last daily entry
-        be_inner = ttk.LabelFrame(row2, text="  Breakeven (last day)  ", padding=6)
-        be_inner.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        be_inner = ttk.LabelFrame(row2, text="  Breakeven (last day)  ", padding=4)
+        be_inner.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
         self.banner_be_labels = {}
         be_fields = [
@@ -522,13 +682,15 @@ class PRLMiningApp:
             ("margin", "Margin:", "—"),
         ]
         for i, (key, lbl_text, dflt) in enumerate(be_fields):
-            ttk.Label(be_inner, text=lbl_text, font=("Segoe UI", 12, "bold")).grid(row=0, column=i * 2, padx=(4, 1), pady=2)
-            lbl = ttk.Label(be_inner, text=dflt, font=("Consolas", 13), width=14, anchor="e")
-            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 6), pady=2)
+            ttk.Label(be_inner, text=lbl_text, font=("Segoe UI", 10, "bold")).grid(row=0, column=i * 2, padx=(2, 1), pady=2)
+            lbl = ttk.Label(be_inner, text=dflt, font=("Consolas", 12), anchor="e")
+            lbl.grid(row=0, column=i * 2 + 1, padx=(0, 4), pady=2)
             self.banner_be_labels[key] = lbl
+        for j in range(8):
+            be_inner.grid_columnconfigure(j, weight=1)
 
         # Refresh button
-        ttk.Button(self.banner_frame, text="↻ Refresh", command=self._refresh_banner, width=10).pack(side="right", padx=4)
+        ttk.Button(self.banner_frame, text="↻ Refresh", command=self._refresh_banner).pack(side="right", padx=4)
 
         # ==========================================================
         # NOTEBOOK
@@ -599,10 +761,10 @@ class PRLMiningApp:
         total_electricity_usd = sum(e.electricity_cost for e in load_daily())
         net = round(total_usd_to_bank - total_electricity_usd, 2)
 
-        net_color = "#2E7D32" if net >= 0 else "#C62828"
+        net_color = self._c["success"] if net >= 0 else self._c["danger"]
         self.banner_usd_val.config(
             text=f"Bank: ${total_usd_to_bank:,.2f}  Net: ${net:,.2f}",
-            foreground=net_color,
+            foreground=net_color, font=("Consolas", 13, "bold"),
         )
 
         # --- Breakeven from last daily mining entry ---
@@ -648,21 +810,26 @@ class PRLMiningApp:
             margin_pct = (total_net / elec_cost * 100.0) if elec_cost > 0 else 0.0
 
             # Update labels with color coding
-            self.banner_be_labels["be_price"].config(text=f"${be_price:.4f}" if be_price != float('inf') else "$—")
-            self.banner_be_labels["be_coins"].config(text=f"{be_coins:.1f} PRL" if be_coins != float('inf') else "— PRL")
+            c = self._c
+            self.banner_be_labels["be_price"].config(
+                text=f"${be_price:.4f}" if be_price != float('inf') else "$—",
+                foreground=c["info"], font=("Consolas", 12, "bold"))
+            self.banner_be_labels["be_coins"].config(
+                text=f"{be_coins:.1f} PRL" if be_coins != float('inf') else "— PRL",
+                foreground=c["info"], font=("Consolas", 12, "bold"))
 
-            # Tokens above BE: green if positive, red if negative
-            above_color = "#2E7D32" if tokens_above >= 0 else "#C62828"
+            above_color = c["success"] if tokens_above >= 0 else c["danger"]
             self.banner_be_labels["tokens_above"].config(
-                text=f"{tokens_above:+.1f} PRL" if tokens_above != float('inf') else "—", foreground=above_color)
+                text=f"{tokens_above:+.1f} PRL" if tokens_above != float('inf') else "—",
+                foreground=above_color, font=("Consolas", 12, "bold"))
 
-            # Margin: green if positive, red if negative
-            margin_color = "#2E7D32" if margin_pct >= 0 else "#C62828"
+            margin_color = c["success"] if margin_pct >= 0 else c["danger"]
             self.banner_be_labels["margin"].config(
-                text=f"{margin_pct:+.1f}%", foreground=margin_color)
+                text=f"{margin_pct:+.1f}%", foreground=margin_color,
+                font=("Consolas", 12, "bold"))
         else:
             for key in self.banner_be_labels:
-                self.banner_be_labels[key].config(text="—", foreground="black")
+                self.banner_be_labels[key].config(text="—", foreground=self._c["text_alt"])
 
     def _sort_treeview(self, tree, col, reverse):
         """Sort a treeview column by clicking the heading.
@@ -726,9 +893,46 @@ class PRLMiningApp:
         widget.insert("1.0", text)
         widget.config(state="disabled")
 
-    # ==========================================================
-    # TAB 1: PROFITABILITY — PRL -> USDT -> ARB -> USD
-    # ==========================================================
+    def _init_text_tags(self, widget):
+        """Configure bold+color tags for a tk.Text result widget (dark grey + red)."""
+        widget.configure(bg="#1A1A1A", fg="#E0E0E0", insertbackground="#E0E0E0",
+                         selectbackground="#7F1D1D", selectforeground="#FCA5A5",
+                         font=("Consolas", 12))
+        widget.tag_configure("bold_green", font=("Consolas", 12, "bold"), foreground="#34D399")
+        widget.tag_configure("bold_red", font=("Consolas", 12, "bold"), foreground="#F87171")
+        widget.tag_configure("bold_blue", font=("Consolas", 12, "bold"), foreground="#60A5FA")
+        widget.tag_configure("bold_orange", font=("Consolas", 12, "bold"), foreground="#FBBF24")
+        widget.tag_configure("bold_purple", font=("Consolas", 12, "bold"), foreground="#A78BFA")
+        widget.tag_configure("bold_dark", font=("Consolas", 12, "bold"), foreground="#E0E0E0")
+        widget.tag_configure("section", font=("Consolas", 12, "bold"), foreground="#888888")
+        widget.tag_configure("header", font=("Consolas", 13, "bold"), foreground="#EF4444")
+        widget.tag_configure("result_box", font=("Consolas", 13, "bold"), foreground="#E0E0E0")
+
+    def _write_tagged(self, widget, lines, tag_rules):
+        """Write lines to a text widget with tags applied.
+
+        tag_rules: list of (pattern, tag_name) — if pattern matches a line,
+        the value portion (after ":") gets the tag.
+        """
+        widget.config(state="normal")
+        widget.delete("1.0", "end")
+        for i, line in enumerate(lines):
+            # Check if this line matches any tag rule
+            matched = False
+            for pattern, tag in tag_rules:
+                if pattern in line and ":" in line:
+                    # Split at first ": " to separate label from value
+                    parts = line.split(": ", 1)
+                    if len(parts) == 2:
+                        label = parts[0] + ": "
+                        value = parts[1]
+                        widget.insert("end", label)
+                        widget.insert("end", value + "\n", tag)
+                        matched = True
+                        break
+            if not matched:
+                widget.insert("end", line + "\n")
+        widget.config(state="disabled")
     def _build_profit_tab(self):
         f = self.tab_frames[0]
         inp = ttk.LabelFrame(f, text="Inputs", padding=8)
@@ -743,133 +947,72 @@ class PRLMiningApp:
             ("Power (watts):", str(last_daily.power) if last_daily else "1600"),
             ("Electricity (USD/kWh):", str(last_daily.elec_price) if last_daily else "0.15"),
             ("PRL price (USDT):", str(last_daily.price) if last_daily else "0.05"),
-            ("ARB spot (USD):", "0.30"),
         ]
         for i, (lbl, dflt) in enumerate(defaults):
             self._grid_label(inp, i, lbl)
             self._profit_vars.append(self._grid_entry(inp, i, dflt))
 
-        ttk.Button(inp, text="Calculate", command=self._calc_profit).grid(row=6, column=0, columnspan=2, padx=6, pady=8, sticky="ew")
+        ttk.Button(inp, text="Calculate", command=self._calc_profit).grid(row=5, column=0, columnspan=2, padx=6, pady=8, sticky="ew")
 
         res = ttk.LabelFrame(f, text="Results", padding=8)
         res.pack(side="left", fill="both", expand=True, padx=6, pady=6)
         self.profit_result = tk.Text(res, wrap="word", width=60, height=30, font=("Consolas", 12))
         self.profit_result.pack(fill="both", expand=True)
+        self._init_text_tags(self.profit_result)
         self.profit_result.insert("1.0", "Enter values and click Calculate.")
         self.profit_result.config(state="disabled")
 
     def _calc_profit(self):
         from mining_toolkit_win import (
             compute_step_drag_sales,
-            DEFAULT_PRL_USDT_FEE_PCT, DEFAULT_USDT_ARB_FEE_PCT,
-            DEFAULT_ARB_USD_FEE_PCT, DEFAULT_ARB_USD_FLAT_FEE,
-            DEFAULT_ARB_TRANSFER_FEE,
+            DEFAULT_PRL_USDT_FEE_PCT,
         )
         coins_mined = self._float(self._profit_vars[0])
         time_h      = self._float(self._profit_vars[1])
         power_w     = self._float(self._profit_vars[2])
         elec_kwh    = self._float(self._profit_vars[3])
         prl_price   = self._float(self._profit_vars[4])
-        arb_usd     = self._float(self._profit_vars[5])
 
         elec_cost = (power_w * time_h / 1000.0) * elec_kwh
 
         drag1 = compute_step_drag_sales("PRL/USDT")
-        drag2 = compute_step_drag_sales("USDT/ARB")
-        drag3 = compute_step_drag_sales("ARB/USD")
-
         d1 = 1.0 - drag1 / 100.0
-        d2 = 1.0 - drag2 / 100.0
-        d3 = 1.0 - drag3 / 100.0
 
         fee1_pct = DEFAULT_PRL_USDT_FEE_PCT
-        fee2_pct = DEFAULT_USDT_ARB_FEE_PCT
-        fee3_pct = DEFAULT_ARB_USD_FEE_PCT
-        fee3_flt = DEFAULT_ARB_USD_FLAT_FEE
-        xfer_arb = DEFAULT_ARB_TRANSFER_FEE
-
         f1 = 1.0 - fee1_pct / 100.0
-        f2 = 1.0 - fee2_pct / 100.0
-        f3 = 1.0 - fee3_pct / 100.0
 
-        # Forward calculation
+        # Forward calculation — PRL -> USDT only
         gross_usdt  = coins_mined * prl_price
         step1_usdt  = gross_usdt * d1 * f1
-        if arb_usd > 0:
-            step2_arb   = step1_usdt / arb_usd * d2 * f2
-            step2_after = step2_arb - xfer_arb
-            step3_gross = step2_after * arb_usd * d3 * f3
-            step3_net   = step3_gross - fee3_flt
-        else:
-            step2_arb = step2_after = step3_gross = step3_net = 0.0
 
-        net_profit      = step3_net - elec_cost
+        net_profit      = step1_usdt - elec_cost
         profit_per_coin = net_profit / coins_mined if coins_mined > 0 else 0
-        cost_ratio      = (elec_cost / step3_gross * 100.0) if step3_gross > 0 else 0.0
 
         # --- Profitability vs electricity (margin on costs) ---
         profit_pct = (net_profit / elec_cost * 100.0) if elec_cost > 0 else 0.0
 
         # --- Breakeven comparison ---
-        if arb_usd > 0:
-            be_price, _, _, _ = compute_breakeven_price(
-                arb_usd, elec_cost, coins_mined, d1, d2, d3, f1, f2, f3, fee3_flt, xfer_arb)
-            price_above_be = prl_price - be_price
-            price_above_be_pct = ((prl_price / be_price) - 1) * 100.0 if be_price > 0 and be_price != float('inf') else 0.0
-            chain_eff = d1 * f1 * d2 * f2 * d3 * f3
-            effective_usd_per_coin = prl_price * chain_eff
-            flat_per_coin = (xfer_arb * arb_usd + fee3_flt) / coins_mined if coins_mined > 0 else 0
-            net_usd_per_coin = effective_usd_per_coin - flat_per_coin - (elec_cost / coins_mined) if coins_mined > 0 else 0
-            be_coins_at_this_price = elec_cost / (prl_price * chain_eff - flat_per_coin) if (prl_price * chain_eff - flat_per_coin) > 0 else float('inf')
-        else:
-            be_price = elec_cost / (coins_mined * d1 * f1) if (coins_mined * d1 * f1) > 0 else float('inf')
-            price_above_be = prl_price - be_price
-            price_above_be_pct = ((prl_price / be_price) - 1) * 100.0 if be_price > 0 and be_price != float('inf') else 0.0
-            be_coins_at_this_price = elec_cost / (prl_price * d1 * f1) if (prl_price * d1 * f1) > 0 else float('inf')
+        be_price = elec_cost / (coins_mined * d1 * f1) if (coins_mined * d1 * f1) > 0 else float('inf')
+        price_above_be = prl_price - be_price
+        price_above_be_pct = ((prl_price / be_price) - 1) * 100.0 if be_price > 0 and be_price != float('inf') else 0.0
+        be_coins_at_this_price = elec_cost / (prl_price * d1 * f1) if (prl_price * d1 * f1) > 0 else float('inf')
         tokens_above_be = coins_mined - be_coins_at_this_price
 
         def drag_note(val):
             return f"{val:.4f}%" if val > 0 else "0% (no data)"
 
-        # Color indicators for display (using text markers since tk.Text supports tags)
         profit_color = " PROFITABLE + " if net_profit > 0 else " UNPROFITABLE "
 
-        chain_label = "PRL -> USDT -> ARB -> USD" if arb_usd > 0 else "PRL -> USDT (ARB step skipped)"
         lines = [
-            f"=== CONVERSION: {chain_label} ===",
+            "=== CONVERSION: PRL -> USDT ===",
             "",
             f"  Mine:     {coins_mined:.2f} PRL  @ ${prl_price:.4f} USDT/PRL",
-        ]
-        if arb_usd > 0:
-            lines.append(f"  ARB spot: ${arb_usd:.4f} USD")
-        lines += [
             "",
             "--- Step 1: PRL -> USDT (SafeTrade) ---",
             f"  Gross:   ${gross_usdt:.4f} USDT  ({coins_mined:.2f} x ${prl_price:.4f})",
             f"  Drag:    {drag_note(drag1)}",
             f"  Fee:     {fee1_pct:.2f}% in USDT",
             f"  Net:     ${step1_usdt:.4f} USDT",
-        ]
-        if arb_usd > 0:
-            lines += [
-                "",
-                "--- Step 2: USDT -> ARB (SafeTrade) ---",
-                f"  Drag:    {drag_note(drag2)}",
-                f"  Fee:     {fee2_pct:.2f}% in ARB",
-                f"  Net:     {step2_arb:.4f} ARB",
-                "",
-                "--- Step 3: Transfer ARB (SafeTrade -> Coinbase) ---",
-                f"  Sent:    {step2_arb:.4f} ARB",
-                f"  Fee:     {xfer_arb:.2f} ARB flat",
-                f"  Arrive:  {step2_after:.4f} ARB",
-                "",
-                "--- Step 4: ARB -> USD (Coinbase) ---",
-                f"  Drag:    {drag_note(drag3)}",
-                f"  Fee:     ${fee3_flt:.2f} + {fee3_pct:.2f}% in USD",
-                f"  Gross:   ${step3_gross:.4f} USD",
-                f"  Net:     ${step3_net:.4f} USD",
-            ]
-        lines += [
             "",
             "=== COSTS ===",
             f"  Electricity:         ${elec_cost:.4f}",
@@ -887,12 +1030,85 @@ class PRLMiningApp:
             f"",
             f"  >>> {profit_color} <<<",
         ]
-        self._text_set(self.profit_result, "\n".join(lines))
+        self._write_tagged_profit_colored(lines)
 
-    # ==========================================================
-    # TAB 2: BREAKEVEN — PRL -> USDT -> ARB -> USD
-    # Fees: 0.1% USDT + 0.1% ARB + 2 ARB xfer + $0.46+0.1% USD
-    # ==========================================================
+    def _write_tagged_profit_colored(self, lines):
+        """Write profit results with per-line color+bold detection."""
+        w = self.profit_result
+        w.config(state="normal")
+        w.delete("1.0", "end")
+        for line in lines:
+            # Section headers
+            if line.startswith("===") and "===" in line[3:]:
+                w.insert("end", line + "\n", "header")
+            # Bold section dividers
+            elif line.startswith("---") and "---" in line[3:]:
+                w.insert("end", line + "\n", "section")
+            # Net profit / profit indicators - color by content
+            elif "PROFITABLE" in line:
+                w.insert("end", line + "\n", "bold_green")
+            elif "UNPROFITABLE" in line:
+                w.insert("end", line + "\n", "bold_red")
+            elif "Net profit:" in line:
+                # Extract value to determine color
+                val_str = line.split(":")[-1].strip().replace("$", "").replace(",", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_green"
+                w.insert("end", line + "\n", tag)
+            elif "Profit/coin:" in line:
+                val_str = line.split(":")[-1].strip().replace("$", "").replace(",", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_green"
+                w.insert("end", line + "\n", tag)
+            elif "Margin on costs:" in line:
+                val_str = line.split(":")[-1].strip().replace("%", "").replace("+", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_green"
+                w.insert("end", line + "\n", tag)
+            elif "Tokens above BE:" in line and "—" not in line:
+                val_str = line.split(":")[-1].strip().replace("PRL", "").replace("+", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_dark"
+                w.insert("end", line + "\n", tag)
+            elif "Price above BE:" in line:
+                # Get the $ value
+                val_part = line.split(":")[-1].strip()
+                val_str = val_part.split("(")[0].replace("$", "").replace("+", "").strip()
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_blue"
+                w.insert("end", line + "\n", tag)
+            elif "Breakeven price:" in line and "—" not in line:
+                w.insert("end", line + "\n", "bold_blue")
+            elif "BE coins" in line and "—" not in line:
+                w.insert("end", line + "\n", "bold_blue")
+            elif "Gross:" in line:
+                w.insert("end", line + "\n", "bold_dark")
+            elif line.strip().startswith("Net:") and "$" in line:
+                w.insert("end", line + "\n", "bold_green")
+            elif line.strip().startswith("Drag:"):
+                w.insert("end", line + "\n", "bold_orange")
+            elif line.strip().startswith("Fee:"):
+                w.insert("end", line + "\n", "bold_red")
+            elif "Electricity:" in line or "Total costs:" in line:
+                w.insert("end", line + "\n", "bold_red")
+            else:
+                w.insert("end", line + "\n")
+        w.config(state="disabled")
     def _build_breakeven_tab(self):
         f = self.tab_frames[1]
         inp = ttk.LabelFrame(f, text="Inputs", padding=8)
@@ -942,6 +1158,7 @@ class PRLMiningApp:
         res.pack(side="left", fill="both", expand=True, padx=6, pady=6)
         self.breakeven_result = tk.Text(res, wrap="word", width=60, height=30, font=("Consolas", 12))
         self.breakeven_result.pack(fill="both", expand=True)
+        self._init_text_tags(self.breakeven_result)
         self.breakeven_result.insert("1.0", "Select mode and enter values, then click Calculate.")
         self.breakeven_result.config(state="disabled")
 
@@ -1151,7 +1368,56 @@ class PRLMiningApp:
                 "  No daily mining entries yet.",
             ]
 
-        self._text_set(self.breakeven_result, "\n".join(lines))
+        self._write_tagged_breakeven_colored(lines)
+
+    def _write_tagged_breakeven_colored(self, lines):
+        """Write breakeven results with per-line color+bold detection."""
+        w = self.breakeven_result
+        w.config(state="normal")
+        w.delete("1.0", "end")
+        for line in lines:
+            if line.startswith("===") and "===" in line[3:]:
+                w.insert("end", line + "\n", "header")
+            elif line.startswith("---") and "---" in line[3:]:
+                w.insert("end", line + "\n", "section")
+            elif "BREAK EVEN" in line and "===" not in line:
+                w.insert("end", line + "\n", "result_box")
+            elif "Price above BE:" in line:
+                val_part = line.split(":")[-1].strip()
+                val_str = val_part.split("(")[0].replace("$", "").replace("+", "").strip()
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_blue"
+                w.insert("end", line + "\n", tag)
+            elif "Tokens above BE:" in line and "—" not in line:
+                val_str = line.split(":")[-1].strip().replace("PRL", "").replace("+", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_green" if val >= 0 else "bold_red"
+                except:
+                    tag = "bold_dark"
+                w.insert("end", line + "\n", tag)
+            elif "BE price" in line and "—" not in line:
+                w.insert("end", line + "\n", "bold_blue")
+            elif "BE coins" in line and "—" not in line:
+                w.insert("end", line + "\n", "bold_blue")
+            elif "Profit:" in line and "should be" in line:
+                w.insert("end", line + "\n", "bold_dark")
+            elif line.strip().startswith(("Drag:", "  Drag:")):
+                w.insert("end", line + "\n", "bold_orange")
+            elif line.strip().startswith(("Fee:", "  Fee:")):
+                w.insert("end", line + "\n", "bold_red")
+            elif "Electricity:" in line and "$" in line and "kWh" not in line:
+                w.insert("end", line + "\n", "bold_red")
+            elif "Step 1:" in line or "Step 2:" in line or "Step 3:" in line or "Xfer:" in line:
+                w.insert("end", line + "\n", "bold_dark")
+            elif "Forward Verification" in line:
+                w.insert("end", line + "\n", "section")
+            else:
+                w.insert("end", line + "\n")
+        w.config(state="disabled")
 
     # ==========================================================
     # TAB 3: DAILY MINING
@@ -1185,23 +1451,29 @@ class PRLMiningApp:
 
         right = ttk.Frame(paned)
         paned.add(right, weight=2)
-        self.daily_summary = ttk.Label(right, text="", font=("Consolas", 12))
+        self.daily_summary = ttk.Label(right, text="", font=("Consolas", 11), justify="left")
         self.daily_summary.pack(fill="x", padx=4, pady=4)
 
         cols = ("date", "coin", "amount", "price", "gross", "electric", "net")
         self.daily_tree = ttk.Treeview(right, columns=cols, show="headings", height=18)
-        for c, h, w in [("date","Date",110),("coin","Coin",60),("amount","Amount",90),
-                        ("price","Price",80),("gross","Gross $",90),("electric","Electric $",90),("net","Net $",90)]:
+        for c, h, w, a in [("date","Date",110,"center"),("coin","Coin",60,"center"),
+                        ("amount","Amount",90,"e"),("price","Price",80,"e"),("gross","Gross $",90,"e"),
+                        ("electric","Electric $",90,"e"),("net","Net $",90,"e")]:
             self.daily_tree.heading(c, text=h, command=lambda _c=c: self._sort_treeview(self.daily_tree, _c, False))
-            self.daily_tree.column(c, width=w)
-        self.daily_tree.pack(fill="both", expand=True, padx=4, pady=4)
-
+            self.daily_tree.column(c, width=w, anchor=a)  # type: ignore[arg-type]
+        # Button frame at top — always visible above the treeview
         bf = ttk.Frame(right)
-        bf.pack(fill="x", padx=4, pady=4)
-        ttk.Button(bf, text="Edit Selected", command=self._edit_daily).pack(side="left", padx=4)
+        bf.pack(fill="x", padx=4, pady=(4, 2))
+        self._daily_edit_btn = ttk.Button(bf, text="Edit Selected", command=self._edit_daily)
+        self._daily_edit_btn.pack(side="left", padx=4)
         ttk.Button(bf, text="Delete Selected", command=self._delete_daily).pack(side="left", padx=4)
         ttk.Button(bf, text="Refresh", command=self._refresh_daily).pack(side="left", padx=4)
+
+        self.daily_tree.pack(fill="both", expand=True, padx=4, pady=(2, 4))
         self._refresh_daily()
+
+        # Double-click to edit
+        self.daily_tree.bind("<Double-1>", lambda e: self._edit_daily())
 
     def _update_daily_labels(self):
         c = self._daily_coin.get()
@@ -1245,6 +1517,7 @@ class PRLMiningApp:
             self._daily_power.set(str(e.power))
             self._daily_elec.set(str(e.elec_price))
             self._daily_time.set(str(e.time_hours))
+            self._daily_edit_btn.config(text="Editing #{}".format(idx + 1))
 
     def _clear_daily_form(self):
         self._daily_edit_idx = -1
@@ -1255,6 +1528,7 @@ class PRLMiningApp:
         self._daily_power.set("1600")
         self._daily_elec.set("0.15")
         self._daily_time.set("24")
+        self._daily_edit_btn.config(text="Edit Selected")
 
     def _delete_daily(self):
         sel = self.daily_tree.selection()
@@ -1282,9 +1556,15 @@ class PRLMiningApp:
             total_net += e.net_profit
             coin_totals[e.coin] = coin_totals.get(e.coin, 0) + e.coins_mined
         avg = total_net / len(entries) if entries else 0
-        coin_summary = "  |  ".join(f"{c}: {a:.2f}" for c, a in sorted(coin_totals.items()))
+        coin_summary = " | ".join(f"{c}: {a:>8.2f}" for c, a in sorted(coin_totals.items()))
+        net_color = "#2E7D32" if total_net >= 0 else "#C62828"
+        summary_text = (
+            f"  Days: {len(entries):>3}  |  {coin_summary}\n"
+            f"    Net: ${total_net:>10.4f}  |  Avg/day: ${avg:>10.4f}"
+        )
         self.daily_summary.config(
-            text=f"  Days: {len(entries)}  |  {coin_summary}  |  Net: ${total_net:.4f}  |  Avg/day: ${avg:.4f}"
+            text=summary_text,
+            foreground=net_color, font=("Consolas", 11, "bold"), justify="left",
         )
 
     # ==========================================================
@@ -1295,72 +1575,89 @@ class PRLMiningApp:
         paned = ttk.PanedWindow(f, orient="horizontal")
         paned.pack(fill="both", expand=True, padx=4, pady=4)
 
-        LEFT = ttk.LabelFrame(paned, text="Trade Entry", padding=8)
+        LEFT = ttk.LabelFrame(paned, text="Trade Entry", padding=6)
         paned.add(LEFT, weight=1)
 
-        # Row 0: Trade pair selector (restricted to valid pipeline pairs)
-        pair_frame = ttk.Frame(LEFT)
-        pair_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=6)
-        ttk.Label(pair_frame, text="Pair:", font=("Segoe UI", 10, "bold")).pack(side="left", padx=4)
-        self._tr_pair_lbl = tk.StringVar(value="PRL/USDT")
+        # Two-column grid: col 0 = labels (left-aligned), col 1 = inputs (left-aligned)
+        LEFT.grid_columnconfigure(0, weight=0, minsize=70)
+        LEFT.grid_columnconfigure(1, weight=0)
+
+        # Row 0: Pair
+        ttk.Label(LEFT, text="Pair:", font=("Segoe UI", 10, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_pair = tk.StringVar(value="PRL/USDT")
-        ttk.Combobox(pair_frame, textvariable=self._tr_pair, values=TRADE_PAIR_LABELS, width=12, state="readonly").pack(side="left", padx=4)
-        # Internal base/quote vars derived from pair selection
+        self._tr_pair_lbl = tk.StringVar(value="PRL/USDT")
+        ttk.Combobox(LEFT, textvariable=self._tr_pair, values=TRADE_PAIR_LABELS, width=12, state="readonly").grid(row=0, column=1, sticky="w", pady=3)
         self._tr_base = tk.StringVar(value="PRL")
         self._tr_quote = tk.StringVar(value="USDT")
 
-        # Row 1: Type + Side
-        row1 = ttk.Frame(LEFT)
-        row1.grid(row=1, column=0, columnspan=2, sticky="ew", padx=4, pady=2)
-        ttk.Label(row1, text="Type:").pack(side="left", padx=2)
+        # Row 1: Type
+        ttk.Label(LEFT, text="Type:", font=("Segoe UI", 10, "bold")).grid(row=1, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_type = tk.StringVar(value="Limit")
-        ttk.Combobox(row1, textvariable=self._tr_type, values=ORDER_TYPES, width=7, state="readonly").pack(side="left", padx=2)
-        ttk.Label(row1, text="Side:").pack(side="left", padx=(12, 2))
+        ttk.Combobox(LEFT, textvariable=self._tr_type, values=ORDER_TYPES, width=10, state="readonly").grid(row=1, column=1, sticky="w", pady=3)
+
+        # Row 2: Side
+        ttk.Label(LEFT, text="Side:", font=("Segoe UI", 10, "bold")).grid(row=2, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_side = tk.StringVar(value="Sell")
-        ttk.Combobox(row1, textvariable=self._tr_side, values=SIDES, width=6, state="readonly").pack(side="left", padx=2)
+        ttk.Combobox(LEFT, textvariable=self._tr_side, values=SIDES, width=8, state="readonly").grid(row=2, column=1, sticky="w", pady=3)
 
-        # Row 2: Status + Exchange
-        row2 = ttk.Frame(LEFT)
-        row2.grid(row=2, column=0, columnspan=2, sticky="ew", padx=4, pady=2)
-        ttk.Label(row2, text="Status:").pack(side="left", padx=2)
+        # Row 3: Status
+        ttk.Label(LEFT, text="Status:", font=("Segoe UI", 10, "bold")).grid(row=3, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_status = tk.StringVar(value="Filled")
-        ttk.Combobox(row2, textvariable=self._tr_status, values=STATUSES, width=8, state="readonly").pack(side="left", padx=2)
-        ttk.Label(row2, text="Exchange:").pack(side="left", padx=(12, 2))
+        ttk.Combobox(LEFT, textvariable=self._tr_status, values=STATUSES, width=10, state="readonly").grid(row=3, column=1, sticky="w", pady=3)
+
+        # Row 4: Exchange
+        ttk.Label(LEFT, text="Exchange:", font=("Segoe UI", 10, "bold")).grid(row=4, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_exchange = tk.StringVar(value="SafeTrade")
-        ttk.Combobox(row2, textvariable=self._tr_exchange, values=EXCHANGES, width=9, state="readonly").pack(side="left", padx=2)
+        ttk.Combobox(LEFT, textvariable=self._tr_exchange, values=EXCHANGES, width=12, state="readonly").grid(row=4, column=1, sticky="w", pady=3)
 
-        # Row 3: Date
-        self._grid_label(LEFT, 3, "Date:")
-        self._tr_date = self._grid_entry(LEFT, 3, date.today().isoformat())
+        # Row 5: Date
+        ttk.Label(LEFT, text="Date:", font=("Segoe UI", 10, "bold")).grid(row=5, column=0, sticky="w", padx=(0, 4), pady=3)
+        self._tr_date = tk.StringVar(value=date.today().isoformat())
+        ttk.Entry(LEFT, textvariable=self._tr_date, width=16).grid(row=5, column=1, sticky="w", pady=3)
 
-        # Row 4: Price (dynamic)
-        self._tr_price_lbl = ttk.Label(LEFT, text="Price (per 1 PRL in USDT):")
-        self._tr_price_lbl.grid(row=4, column=0, sticky="w", padx=6, pady=2)
-        self._tr_price = self._grid_entry(LEFT, 4)
+        # Row 6: Price
+        self._tr_price_lbl = ttk.Label(LEFT, text="Price:", font=("Segoe UI", 10, "bold"))
+        self._tr_price_lbl.grid(row=6, column=0, sticky="w", padx=(0, 4), pady=3)
+        self._tr_price = tk.StringVar()
+        ttk.Entry(LEFT, textvariable=self._tr_price, width=16).grid(row=6, column=1, sticky="w", pady=3)
 
-        # Row 5: Amount traded
-        self._tr_amt_lbl = ttk.Label(LEFT, text="PRL amount:")
-        self._tr_amt_lbl.grid(row=5, column=0, sticky="w", padx=6, pady=2)
-        self._tr_amt = self._grid_entry(LEFT, 5)
+        # Row 7: Amount
+        self._tr_amt_lbl = ttk.Label(LEFT, text="Amount:", font=("Segoe UI", 10, "bold"))
+        self._tr_amt_lbl.grid(row=7, column=0, sticky="w", padx=(0, 4), pady=3)
+        self._tr_amt = tk.StringVar()
+        ttk.Entry(LEFT, textvariable=self._tr_amt, width=16).grid(row=7, column=1, sticky="w", pady=3)
 
-        # Row 6: Total (dynamic)
-        self._tr_total_lbl = ttk.Label(LEFT, text="Total (USDT):")
-        self._tr_total_lbl.grid(row=6, column=0, sticky="w", padx=6, pady=2)
-        self._tr_total = self._grid_entry(LEFT, 6)
+        # Row 8: Total
+        self._tr_total_lbl = ttk.Label(LEFT, text="Total:", font=("Segoe UI", 10, "bold"))
+        self._tr_total_lbl.grid(row=8, column=0, sticky="w", padx=(0, 4), pady=3)
+        self._tr_total = tk.StringVar()
+        ttk.Entry(LEFT, textvariable=self._tr_total, width=16).grid(row=8, column=1, sticky="w", pady=3)
 
-        # Row 7: Fee coin (auto-derived from pair+side, not user-editable)
-        self._grid_label(LEFT, 7, "Fee coin:")
+        # Row 9: Fee coin
+        ttk.Label(LEFT, text="Fee coin:", font=("Segoe UI", 10, "bold")).grid(row=9, column=0, sticky="w", padx=(0, 4), pady=3)
         self._tr_fee_coin = tk.StringVar(value="USDT")
-        ttk.Label(LEFT, textvariable=self._tr_fee_coin, font=("Segoe UI", 10)).grid(row=7, column=1, sticky="w", padx=6, pady=2)
+        ttk.Label(LEFT, textvariable=self._tr_fee_coin, font=("Segoe UI", 10)).grid(row=9, column=1, sticky="w", pady=3)
 
-        # Row 8: Fee amount label (shows coin, updated dynamically)
-        self._tr_fee_amt_lbl = ttk.Label(LEFT, text="Fee amount (USDT):")
-        self._tr_fee_amt_lbl.grid(row=8, column=0, sticky="w", padx=6, pady=2)
-        self._tr_fee_amt = self._grid_entry(LEFT, 8, "0")
+        # Row 10: Fee amount
+        ttk.Label(LEFT, text="Fee:", font=("Segoe UI", 10, "bold")).grid(row=10, column=0, sticky="w", padx=(0, 4), pady=3)
+        self._tr_fee_amt = tk.StringVar(value="0")
+        ttk.Entry(LEFT, textvariable=self._tr_fee_amt, width=16).grid(row=10, column=1, sticky="w", pady=3)
 
-        # Fee display: auto-computed live label below
-        self._tr_fee_display_lbl = ttk.Label(LEFT, text="Fee: — USDT", foreground="gray")
-        self._tr_fee_display_lbl.grid(row=9, column=0, columnspan=2, sticky="w", padx=6, pady=1)
+        # Row 11: Fee display
+        self._tr_fee_display_lbl = tk.Label(LEFT, text="—", fg="#888888", bg="#1A1A1A")
+        self._tr_fee_display_lbl.grid(row=11, column=0, columnspan=2, sticky="w", padx=0, pady=2)
+
+        # Row 12: Status line
+        self._tr_status_lbl = tk.Label(LEFT, text="Pair: PRL/USDT  |  Side: Sell", fg="#888888", bg="#1A1A1A")
+        self._tr_status_lbl.grid(row=12, column=0, columnspan=2, sticky="w", padx=0, pady=2)
+
+        # Row 13: Buttons
+        bf = ttk.Frame(LEFT)
+        bf.grid(row=13, column=0, columnspan=2, pady=6, sticky="w")
+        ttk.Button(bf, text="Save / Update", command=self._save_trade).pack(side="left", padx=(0, 4))
+        ttk.Button(bf, text="Clear Form", command=self._clear_trade_form).pack(side="left")
+
+        # Traces
         self._tr_pair.trace_add("write", lambda *a: self._on_pair_change())
         self._tr_side.trace_add("write", lambda *a: self._update_trade_labels())
         self._tr_fee_amt.trace_add("write", lambda *a: self._update_fee_display())
@@ -1368,42 +1665,51 @@ class PRLMiningApp:
         self._tr_total.trace_add("write", lambda *a: self._update_fee_display())
         self._tr_price.trace_add("write", lambda *a: self._update_fee_display())
 
-        self._tr_status_lbl = ttk.Label(LEFT, text="Pair: PRL/USDT  |  Side: Sell  |  Fill in trade details.", foreground="gray")
-        self._tr_status_lbl.grid(row=11, column=0, columnspan=2, sticky="w", padx=6, pady=3)
-
-        bf = ttk.Frame(LEFT)
-        bf.grid(row=12, column=0, columnspan=2, pady=4, sticky="ew")
-        ttk.Button(bf, text="Save / Update", command=self._save_trade).pack(side="left", padx=4)
-        ttk.Button(bf, text="Clear Form", command=self._clear_trade_form).pack(side="left", padx=4)
-
         # Right: list
         right = ttk.Frame(paned)
         paned.add(right, weight=2)
-        self.sales_summary = ttk.Label(right, text="", font=("Consolas", 12), wraplength=550)
+        self.sales_summary = tk.Text(right, height=6, font=("Consolas", 11), wrap="none",
+                                      bg="#1A1A1A", fg="#E0E0E0", relief="flat", bd=0,
+                                      selectbackground="#1A1A1A", selectforeground="#E0E0E0",
+                                      cursor="arrow")
         self.sales_summary.pack(fill="x", padx=4, pady=4)
+        self.sales_summary.tag_configure("bold", font=("Consolas", 11, "bold"), foreground="#E0E0E0")
+        self.sales_summary.tag_configure("blue", foreground="#60A5FA")
+        self.sales_summary.tag_configure("green", foreground="#34D399")
+        self.sales_summary.tag_configure("red", foreground="#F87171")
+        self.sales_summary.config(state="disabled")
 
         cols = ("date","pair","side","type","status","exchange","price","amount","total","fee","net")
         self.sales_tree = ttk.Treeview(right, columns=cols, show="headings", height=14)
-        for c, h, w in [("date","Date",120),("pair","Pair",70),("side","Side",45),("type","Type",55),
-                        ("status","Status",65),("exchange","Exchange",75),("price","Price",75),
-                        ("amount","Traded",80),("total","Total",80),("fee","Fee",85),("net","Net Recv",90)]:
+        col_config = [
+            ("date","Date",120,"center"),("pair","Pair",70,"center"),("side","Side",50,"center"),
+            ("type","Type",55,"center"),("status","Status",70,"center"),("exchange","Exchange",80,"center"),
+            ("price","Price",80,"e"),("amount","Traded",85,"e"),("total","Total",85,"e"),
+            ("fee","Fee",100,"e"),("net","Net Recv",100,"e"),
+        ]
+        for c, h, w, a in col_config:
             self.sales_tree.heading(c, text=h, command=lambda _c=c: self._sort_treeview(self.sales_tree, _c, False))
-            self.sales_tree.column(c, width=w)
-        self.sales_tree.pack(fill="both", expand=True, padx=4, pady=4)
-        self.sales_tree.tag_configure("canceled", background="#F8D7DA")
-        self.sales_tree.tag_configure("partial", background="#FFF3CD")
-        self.sales_tree.tag_configure("filled", background="#D4EDDA")
-        self.sales_tree.tag_configure("buy", background="#D1ECF1")
+            self.sales_tree.column(c, width=w, anchor=a)  # type: ignore[arg-type]
+        self.sales_tree.tag_configure("canceled", background="#4A1C1C", foreground="#FCA5A5")
+        self.sales_tree.tag_configure("partial", background="#4A3B1C", foreground="#FDE68A")
+        self.sales_tree.tag_configure("filled", background="#1C3A2A", foreground="#6EE7B7")
+        self.sales_tree.tag_configure("buy", background="#1C3A4A", foreground="#7DD3FC")
 
+        # Button frame — always visible above treeview
         bf2 = ttk.Frame(right)
-        bf2.pack(fill="x", padx=4, pady=4)
+        bf2.pack(fill="x", padx=4, pady=(4, 2))
         ttk.Button(bf2, text="Edit Selected", command=self._edit_trade).pack(side="left", padx=4)
         ttk.Button(bf2, text="Delete Selected", command=self._delete_trade).pack(side="left", padx=4)
         ttk.Button(bf2, text="Refresh", command=self._refresh_sales).pack(side="left", padx=4)
 
+        self.sales_tree.pack(fill="both", expand=True, padx=4, pady=(2, 4))
+
         self._tr_edit_idx = -1
         self._update_trade_labels()
         self._refresh_sales()
+
+        # Double-click to edit
+        self.sales_tree.bind("<Double-1>", lambda e: self._edit_trade())
 
     def _on_pair_change(self):
         """When the pair selector changes, update base/quote and labels."""
@@ -1430,7 +1736,6 @@ class PRLMiningApp:
         else:
             fee_coin = bc
         self._tr_fee_coin.set(fee_coin)
-        self._tr_fee_amt_lbl.config(text=f"Fee amount ({fee_coin}):")
         self._update_fee_display()
         # Update status line
         self._tr_status_lbl.config(text=f"Pair: {pair}  |  Side: {side}  |  {fee_coin} received")
@@ -1440,7 +1745,7 @@ class PRLMiningApp:
         fee_amt = self._float(self._tr_fee_amt)
         fee_coin = self._tr_fee_coin.get().upper()
         if fee_amt > 0:
-            self._tr_fee_display_lbl.config(text=f"Fee: {fee_amt:.4f} {fee_coin}", foreground="black")
+            self._tr_fee_display_lbl.config(text=f"Fee: {fee_amt:.4f} {fee_coin}", foreground="#E0E0E0")
         else:
             # Show the auto-computed default fee
             amt = self._float(self._tr_amt)
@@ -1449,12 +1754,12 @@ class PRLMiningApp:
             side = self._tr_side.get()
             if side == "Sell" and amt > 0 and price > 0:
                 default_fee = amt * price * 0.001
-                self._tr_fee_display_lbl.config(text=f"Fee: {default_fee:.4f} {fee_coin} (auto)", foreground="gray")
+                self._tr_fee_display_lbl.config(text=f"Fee: {default_fee:.4f} {fee_coin} (auto)", foreground="#888888")
             elif side == "Buy" and total > 0 and price > 0:
                 default_fee = (total / price) * 0.001
-                self._tr_fee_display_lbl.config(text=f"Fee: {default_fee:.4f} {fee_coin} (auto)", foreground="gray")
+                self._tr_fee_display_lbl.config(text=f"Fee: {default_fee:.4f} {fee_coin} (auto)", foreground="#888888")
             else:
-                self._tr_fee_display_lbl.config(text=f"Fee: — {fee_coin}", foreground="gray")
+                self._tr_fee_display_lbl.config(text=f"Fee: — {fee_coin}", foreground="#888888")
 
     def _save_trade(self):
         amt = self._float(self._tr_amt)
@@ -1603,16 +1908,50 @@ class PRLMiningApp:
                 f"{e.total:.4f}", fee_str, net_str,
             ), tags=(tag,))
 
-        pair_summary = "  ".join(f"{p}: {a:.2f}" for p, a in sorted(pair_stats.items()))
-        # Build net and fee strings
-        net_parts = [f"{coin}:{amount:+.4f}" for coin, amount in net_per_coin.items() if abs(amount) > 1e-9]
-        fee_parts = [f"{coin}:{amount:+.4f}" for coin, amount in fee_per_coin.items() if amount > 1e-9]
-        net_str_summary = "  ".join(net_parts) if net_parts else "0"
-        fee_str_summary = "  ".join(fee_parts) if fee_parts else "0"
-        self.sales_summary.config(
-            text=f"  Trades: {len(entries)}  |  {pair_summary}  |  "
-                 f"Net: {net_str_summary}  |  Fees: {fee_str_summary}"
-        )
+        # Store (label, raw_value) tuples for proper alignment
+        pair_data = [(p, a) for p, a in sorted(pair_stats.items())]
+        net_data = [(c, net_per_coin.get(c, 0.0)) for c in sorted(net_per_coin.keys()) if abs(net_per_coin.get(c, 0.0)) > 1e-9]
+        fee_data = [(c, fee_per_coin.get(c, 0.0)) for c in sorted(fee_per_coin.keys()) if fee_per_coin.get(c, 0.0) > 1e-9]
+
+        # Pad to same row count
+        max_rows = max(len(pair_data), len(net_data), len(fee_data), 1)
+        while len(pair_data) < max_rows: pair_data.append(("", 0))
+        while len(net_data) < max_rows: net_data.append(("", 0))
+        while len(fee_data) < max_rows: fee_data.append(("", 0))
+
+        pair_lw = 10  # label width for pairs
+        pair_vw = 12  # value width for pairs
+        net_lw = 8    # label width for net
+        net_vw = 14   # value width for net
+        fee_lw = 8    # label width for fees
+        fee_vw = 14   # value width for fees
+        gap = "   "   # 3-space gap between columns
+
+        self.sales_summary.config(state="normal")
+        self.sales_summary.delete("1.0", "end")
+        self.sales_summary.insert("end", f"Trades: {len(entries):>3}\n", "bold")
+        hdr = (f"{'Pairs':<{pair_lw+pair_vw}}"
+               f"{gap}"
+               f"{'Net':<{net_lw+net_vw}}"
+               f"{gap}"
+               f"{'Fees':<{fee_lw+fee_vw}}")
+        self.sales_summary.insert("end", hdr + "\n", "bold")
+
+        for (p_l, p_v), (n_l, n_v), (f_l, f_v) in zip(pair_data, net_data, fee_data):
+            if p_l:
+                c1 = f"{p_l + ':':<{pair_lw}}{p_v:>{pair_vw}.2f}"
+            else:
+                c1 = ""
+            if n_l:
+                c2 = f"{n_l + ':':<{net_lw}}{n_v:>{net_vw}.4f}"
+            else:
+                c2 = ""
+            if f_l:
+                c3 = f"{f_l + ':':<{fee_lw}}{f_v:>{fee_vw}.4f}"
+            else:
+                c3 = ""
+            self.sales_summary.insert("end", c1 + gap + c2 + gap + c3 + "\n", "blue")
+        self.sales_summary.config(state="disabled")
 
     # ==========================================================
     # TAB 5: TRANSFERS - Exchange to exchange
@@ -1676,30 +2015,44 @@ class PRLMiningApp:
         # Right: list
         right = ttk.Frame(paned)
         paned.add(right, weight=2)
-        self.xfer_summary = ttk.Label(right, text="", font=("Consolas", 12), wraplength=550)
+        self.xfer_summary = tk.Text(right, height=5, font=("Consolas", 11), wrap="none",
+                                     bg="#1A1A1A", fg="#E0E0E0", relief="flat", bd=0,
+                                     selectbackground="#1A1A1A", selectforeground="#E0E0E0",
+                                     cursor="arrow")
         self.xfer_summary.pack(fill="x", padx=4, pady=4)
+        self.xfer_summary.tag_configure("bold", font=("Consolas", 11, "bold"), foreground="#E0E0E0")
+        self.xfer_summary.tag_configure("blue", foreground="#60A5FA")
+        self.xfer_summary.tag_configure("green", foreground="#34D399")
+        self.xfer_summary.tag_configure("red", foreground="#F87171")
+        self.xfer_summary.config(state="disabled")
 
         cols = ("date", "coin", "from", "to", "amount", "fee", "received", "status", "notes")
         self.xfer_tree = ttk.Treeview(right, columns=cols, show="headings", height=14)
-        for c, h, w in [("date","Date",130),("coin","Coin",60),("from","From",90),("to","To",90),
-                        ("amount","Amount",90),("fee","Fee",100),
-                        ("received","Received",90),("status","Status",80),("notes","Notes",120)]:
+        for c, h, w, a in [("date","Date",120,"center"),("coin","Coin",60,"center"),
+                        ("from","From",90,"center"),("to","To",90,"center"),
+                        ("amount","Amount",90,"e"),("fee","Fee",105,"e"),
+                        ("received","Received",95,"e"),("status","Status",80,"center"),("notes","Notes",120,"w")]:
             self.xfer_tree.heading(c, text=h, command=lambda _c=c: self._sort_treeview(self.xfer_tree, _c, False))
-            self.xfer_tree.column(c, width=w)
-        self.xfer_tree.pack(fill="both", expand=True, padx=4, pady=4)
-        self.xfer_tree.tag_configure("completed", background="#D4EDDA")
-        self.xfer_tree.tag_configure("pending", background="#FFF3CD")
-        self.xfer_tree.tag_configure("failed", background="#F8D7DA")
+            self.xfer_tree.column(c, width=w, anchor=a)  # type: ignore[arg-type]
+        self.xfer_tree.tag_configure("completed", background="#1C3A2A", foreground="#6EE7B7")
+        self.xfer_tree.tag_configure("pending", background="#4A3B1C", foreground="#FDE68A")
+        self.xfer_tree.tag_configure("failed", background="#4A1C1C", foreground="#FCA5A5")
 
+        # Button frame — always visible above treeview
         bf2 = ttk.Frame(right)
-        bf2.pack(fill="x", padx=4, pady=4)
+        bf2.pack(fill="x", padx=4, pady=(4, 2))
         ttk.Button(bf2, text="Edit Selected", command=self._edit_transfer).pack(side="left", padx=4)
         ttk.Button(bf2, text="Delete Selected", command=self._delete_transfer).pack(side="left", padx=4)
         ttk.Button(bf2, text="Refresh", command=self._refresh_transfers).pack(side="left", padx=4)
 
+        self.xfer_tree.pack(fill="both", expand=True, padx=4, pady=(2, 4))
+
         self._xfer_edit_idx = -1
         self._update_xfer_labels()
         self._refresh_transfers()
+
+        # Double-click to edit
+        self.xfer_tree.bind("<Double-1>", lambda e: self._edit_transfer())
 
     def _update_xfer_labels(self):
         c = self._xfer_coin.get() or "?"
@@ -1801,10 +2154,38 @@ class PRLMiningApp:
             total_amount += e.amount
             total_fee += e.fee_amount
             coin_totals[e.coin] = coin_totals.get(e.coin, 0) + e.amount
-        coin_summary = "  ".join(f"{c}: {a:.2f}" for c, a in sorted(coin_totals.items()))
-        self.xfer_summary.config(
-            text=f"  Transfers: {len(entries)}  |  {coin_summary}  |  Total fees: {total_fee:.4f} (in fee coin)"
-        )
+        coin_lines = [f"{c}: {a:>10.2f}" for c, a in sorted(coin_totals.items())]
+
+        fee_per_coin = {}
+        for e in entries:
+            if e.fee_amount > 0:
+                fee_per_coin[e.fee_coin] = fee_per_coin.get(e.fee_coin, 0.0) + e.fee_amount
+        fee_lines = [f"{c}: {fee_per_coin.get(c, 0):>10.4f}" for c in sorted(fee_per_coin.keys())]
+
+        # Store (label, raw_value) for proper decimal alignment
+        coin_data = [(c, a) for c, a in sorted(coin_totals.items())]
+        fee_data = [(c, fee_per_coin.get(c, 0.0)) for c in sorted(fee_per_coin.keys())]
+
+        max_rows = max(len(coin_data), len(fee_data), 1)
+        while len(coin_data) < max_rows: coin_data.append(("", 0))
+        while len(fee_data) < max_rows: fee_data.append(("", 0))
+
+        col1_w = 20
+        col_lw = 8   # label width
+        col_vw = 12  # value width
+        gap = "   "  # 3-space gap between columns
+
+        self.xfer_summary.config(state="normal")
+        self.xfer_summary.delete("1.0", "end")
+        self.xfer_summary.insert("end", f"Count: {len(entries):>3}\n", "bold")
+        hdr = f"{'Transfers':<{col_lw+col_vw}}{gap}{'Fees':<{col_lw+col_vw}}"
+        self.xfer_summary.insert("end", hdr + "\n", "bold")
+
+        for (t_l, t_v), (f_l, f_v) in zip(coin_data, fee_data):
+            c1 = f"{t_l + ':':<{col_lw}}{t_v:>{col_vw}.2f}" if t_l else ""
+            c2 = f"{f_l + ':':<{col_lw}}{f_v:>{col_vw}.4f}" if f_l else ""
+            self.xfer_summary.insert("end", c1 + gap + c2 + "\n", "blue")
+        self.xfer_summary.config(state="disabled")
 
     # ==========================================================
     # TAB 6: DRAG ANALYSIS
@@ -1887,6 +2268,7 @@ class PRLMiningApp:
         res.pack(side="left", fill="both", expand=True, padx=6, pady=6)
         self.drag_result = tk.Text(res, wrap="word", width=55, height=30, font=("Consolas", 12))
         self.drag_result.pack(fill="both", expand=True)
+        self._init_text_tags(self.drag_result)
         self.drag_result.insert("1.0", "Select coin pairs, enter observed amounts, and click Analyze.")
         self.drag_result.config(state="disabled")
         self._update_drag_labels()
@@ -1939,96 +2321,120 @@ class PRLMiningApp:
             f"  Effective:   ${d.effective_rate:.6f} USD per {fc}",
             f"  Raw price:   ${fp:.6f} USD",
         ]
-        self._text_set(self.drag_result, "\n".join(lines))
+        self._write_tagged_drag_colored(lines)
+
+    def _write_tagged_drag_colored(self, lines):
+        """Write drag analysis results with per-line color+bold detection."""
+        w = self.drag_result
+        w.config(state="normal")
+        w.delete("1.0", "end")
+        for line in lines:
+            if line.startswith("===") and "===" in line[3:]:
+                w.insert("end", line + "\n", "header")
+            elif "TOTAL DRAG:" in line:
+                # Color total drag: higher = worse (red)
+                val_str = line.split(":")[-1].strip().replace("%", "")
+                try:
+                    val = float(val_str)
+                    tag = "bold_red" if val > 1.0 else "bold_orange" if val > 0.1 else "bold_green"
+                except:
+                    tag = "bold_orange"
+                w.insert("end", line + "\n", tag)
+            elif line.strip().startswith("Drag:"):
+                val_str = line.split("%")[0].split()[-1]
+                try:
+                    val = float(val_str)
+                    tag = "bold_red" if val > 1.0 else "bold_orange" if val > 0.1 else "bold_green"
+                except:
+                    tag = "bold_orange"
+                w.insert("end", line + "\n", tag)
+            elif "Effective:" in line:
+                w.insert("end", line + "\n", "bold_blue")
+            elif "Raw price:" in line:
+                w.insert("end", line + "\n", "bold_dark")
+            elif line.strip().startswith("Expected:"):
+                w.insert("end", line + "\n", "section")
+            elif line.strip().startswith("Received:"):
+                w.insert("end", line + "\n", "bold_green")
+            elif "==============================" in line:
+                w.insert("end", line + "\n", "header")
+            else:
+                w.insert("end", line + "\n")
+        w.config(state="disabled")
 
     # ==========================================================
-    # TAB 7: DATA — Import / Export / Summary
+    # TAB 8: DATA — Import / Export / Summary
     # ==========================================================
     def _build_data_tab(self):
-        f = self.tab_frames[6]
+        f = self.tab_frames[7]
 
-        # Left panel: summary + actions
-        left = ttk.LabelFrame(f, text="Data Management", padding=8)
-        left.pack(side="left", fill="y", padx=6, pady=6)
+        main = tk.Frame(f, bg="#1A1A1A")
+        main.pack(fill="both", expand=True, padx=8, pady=8)
 
-        # Summary
-        self._data_summary = ttk.Label(left, text="", font=("Consolas", 12), justify="left")
-        self._data_summary.grid(row=0, column=0, columnspan=2, sticky="w", padx=6, pady=6)
+        tk.Label(main, text="DATA SUMMARY", font=("Segoe UI", 11, "bold"),
+                 fg="#FF4444", bg="#1A1A1A").pack(anchor="w", pady=(0, 4))
+        self._data_summary = tk.Label(main, text="", font=("Consolas", 11),
+                                       fg="#E0E0E0", bg="#2A2A2A", justify="left", padx=10, pady=8)
+        self._data_summary.pack(fill="x", pady=(0, 12))
         self._refresh_data_summary()
 
-        # Separator
-        ttk.Separator(left, orient="horizontal").grid(row=1, column=0, columnspan=2, sticky="ew", pady=8)
+        tk.Label(main, text="EXPORT", font=("Segoe UI", 11, "bold"),
+                 fg="#FF4444", bg="#1A1A1A").pack(anchor="w", pady=(0, 4))
+        tk.Button(main, text="Export Data...", command=self._export_data,
+                  font=("Segoe UI", 10, "bold"), fg="#FF4444", bg="#2A2A2A",
+                  activebackground="#333", activeforeground="#FF6666",
+                  relief="flat", padx=12, pady=4).pack(anchor="w", pady=(0, 12))
 
-        # Export section
-        ttk.Label(left, text="Export all data to a single JSON file:", font=("Segoe UI", 9, "bold")).grid(row=2, column=0, columnspan=2, sticky="w", padx=6, pady=2)
-        ttk.Button(left, text="Export Data...", command=self._export_data).grid(row=3, column=0, padx=6, pady=4, sticky="ew")
-
-        # Separator
-        ttk.Separator(left, orient="horizontal").grid(row=4, column=0, columnspan=2, sticky="ew", pady=8)
-
-        # Import section
-        ttk.Label(left, text="Import data from file:", font=("Segoe UI", 9, "bold")).grid(row=5, column=0, columnspan=2, sticky="w", padx=6, pady=2)
-
+        tk.Label(main, text="IMPORT", font=("Segoe UI", 11, "bold"),
+                 fg="#FF4444", bg="#1A1A1A").pack(anchor="w", pady=(0, 4))
         self._import_mode = tk.StringVar(value="merge")
-        ttk.Radiobutton(left, text="Merge (skip duplicates)", variable=self._import_mode, value="merge").grid(row=6, column=0, columnspan=2, sticky="w", padx=6, pady=1)
-        ttk.Radiobutton(left, text="Replace all data", variable=self._import_mode, value="replace").grid(row=7, column=0, columnspan=2, sticky="w", padx=6, pady=1)
-        ttk.Button(left, text="Import Data...", command=self._import_data).grid(row=8, column=0, padx=6, pady=4, sticky="ew")
+        rb_frame = tk.Frame(main, bg="#1A1A1A")
+        rb_frame.pack(fill="x", pady=(0, 4))
+        tk.Radiobutton(rb_frame, text="Merge (skip duplicates)", variable=self._import_mode,
+                       value="merge", fg="#E0E0E0", bg="#1A1A1A", selectcolor="#333",
+                       font=("Segoe UI", 10)).pack(side="left", padx=(0, 12))
+        tk.Radiobutton(rb_frame, text="Replace all data", variable=self._import_mode,
+                       value="replace", fg="#E0E0E0", bg="#1A1A1A", selectcolor="#333",
+                       font=("Segoe UI", 10)).pack(side="left")
+        tk.Button(main, text="Import Data...", command=self._import_data,
+                  font=("Segoe UI", 10, "bold"), fg="#FF4444", bg="#2A2A2A",
+                  activebackground="#333", activeforeground="#FF6666",
+                  relief="flat", padx=12, pady=4).pack(anchor="w", pady=(0, 12))
 
-        # Separator
-        ttk.Separator(left, orient="horizontal").grid(row=9, column=0, columnspan=2, sticky="ew", pady=8)
-
-        # Data directory info
-        ttk.Label(left, text=f"Data directory:", font=("Segoe UI", 9, "bold")).grid(row=10, column=0, columnspan=2, sticky="w", padx=6, pady=2)
-        self._data_dir_lbl = ttk.Label(left, text=str(DATA_DIR), foreground="gray")
-        self._data_dir_lbl.grid(row=11, column=0, columnspan=2, sticky="w", padx=6, pady=2)
-
-        # Right panel: log / recent activity
-        right = ttk.LabelFrame(f, text="Recent Sales", padding=8)
-        right.pack(side="left", fill="both", expand=True, padx=6, pady=6)
-
-        self._data_log = tk.Text(right, wrap="word", width=55, height=25, font=("Consolas", 11))
-        self._data_log.pack(fill="both", expand=True)
-        self._data_log.insert("1.0", "Use Export to back up all data.\nUse Import to restore or merge from a backup file.\n\nMerge mode: imports only records with dates/values not already present.\nReplace mode: clears all existing data before importing.")
-        self._data_log.config(state="disabled")
+        tk.Label(main, text="DATA DIRECTORY", font=("Segoe UI", 11, "bold"),
+                 fg="#FF4444", bg="#1A1A1A").pack(anchor="w", pady=(0, 2))
+        self._data_dir_lbl = tk.Label(main, text=str(DATA_DIR), font=("Consolas", 9),
+                                       fg="#888", bg="#1A1A1A", wraplength=400, justify="left")
+        self._data_dir_lbl.pack(anchor="w")
 
     def _refresh_data_summary(self):
         daily = load_daily()
         sales = load_sales()
         transfers = load_transfers()
-        text = (
-            f"  Daily entries:    {len(daily)}\n"
-            f"  Sales entries:    {len(sales)}\n"
-            f"  Transfer entries: {len(transfers)}\n"
-            f"  Total records:    {len(daily) + len(sales) + len(transfers)}"
-        )
+        text = (f"  Daily entries:    {len(daily)}\n"
+                f"  Sales entries:    {len(sales)}\n"
+                f"  Transfer entries: {len(transfers)}\n"
+                f"  Total records:    {len(daily) + len(sales) + len(transfers)}")
         self._data_summary.config(text=text)
 
     def _export_data(self):
         import tkinter.filedialog as fd
-        path = fd.asksaveasfilename(
-            title="Export Data",
-            defaultextension=".json",
+        path = fd.asksaveasfilename(title="Export Data", defaultextension=".json",
             filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-            initialfile=f"mining_toolkit_backup_{date.today().isoformat()}.json"
-        )
+            initialfile=f"mining_toolkit_backup_{date.today().isoformat()}.json")
         if not path:
             return
-        backup = {
-            "version": 1,
-            "exported_at": date.today().isoformat(),
+        backup = {"version": 1, "exported_at": date.today().isoformat(),
             "daily_log": [asdict(e) for e in load_daily()],
             "sales_log": [asdict(e) for e in load_sales()],
-            "transfers_log": [asdict(e) for e in load_transfers()],
-        }
+            "transfers_log": [asdict(e) for e in load_transfers()]}
         Path(path).write_text(json.dumps(backup, indent=2))
-        messagebox.showinfo("Export Complete", f"Exported {len(backup['daily_log'])} daily, {len(backup['sales_log'])} sales, {len(backup['transfers_log'])} transfer records to:\n{path}")
+        messagebox.showinfo("Export Complete",
+            f"Exported {len(backup['daily_log'])} daily, {len(backup['sales_log'])} sales, {len(backup['transfers_log'])} transfers.")
 
     def _import_data(self):
         import tkinter.filedialog as fd
-        path = fd.askopenfilename(
-            title="Import Data",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
+        path = fd.askopenfilename(title="Import Data", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
         if not path:
             return
         try:
@@ -2036,95 +2442,36 @@ class PRLMiningApp:
         except Exception as e:
             messagebox.showerror("Import Error", f"Could not read file:\n{e}")
             return
-
-        # Validate structure
         if not isinstance(raw, dict):
-            # Maybe it's an old single-array format
-            messagebox.showerror("Import Error", "Unrecognized file format. Expected a JSON object with daily_log, sales_log, and transfers_log keys.")
+            messagebox.showerror("Import Error", "Unrecognized file format.")
             return
-
-        daily_in = raw.get("daily_log", [])
-        sales_in = raw.get("sales_log", [])
-        transfers_in = raw.get("transfers_log", [])
-
+        daily_in = raw.get("daily_log", []); sales_in = raw.get("sales_log", []); transfers_in = raw.get("transfers_log", [])
         if not any([daily_in, sales_in, transfers_in]):
-            messagebox.showerror("Import Error", "No data found in file. Expected daily_log, sales_log, or transfers_log arrays.")
+            messagebox.showerror("Import Error", "No data found.")
             return
-
-        mode = self._import_mode.get()
-        if mode == "replace":
-            if not messagebox.askyesno("Confirm Replace", "This will DELETE all existing data and replace it with the imported data.\n\nAre you sure?"):
-                return
+        if self._import_mode.get() == "replace":
             save_daily([DailyMiningEntry(**e) for e in daily_in])
             save_sales([TradeEntry(**e) for e in sales_in])
             save_transfers([TransferEntry(**e) for e in transfers_in])
-            msg = f"Replaced all data with {len(daily_in)} daily, {len(sales_in)} sales, {len(transfers_in)} transfer records."
+            msg = f"Replaced with {len(daily_in)} daily, {len(sales_in)} sales, {len(transfers_in)} transfers."
         else:
-            # Merge: skip records that already exist (match by all fields)
-            existing_daily = load_daily()
-            existing_sales = load_sales()
-            existing_transfers = load_transfers()
-
-            def make_key_daily(e):
-                return (e.date, e.coin, round(e.coins_mined, 8))
-            def make_key_sales(e):
-                return (e.date, e.base_coin, e.quote_coin, e.side, round(e.amount, 8), round(e.total, 4))
-            def make_key_xfer(e):
-                return (e.date, e.coin, e.from_exchange, e.to_exchange, round(e.amount, 8))
-
-            existing_d_keys = {make_key_daily(e) for e in existing_daily}
-            existing_s_keys = {make_key_sales(e) for e in existing_sales}
-            existing_x_keys = {make_key_xfer(e) for e in existing_transfers}
-
-            new_daily = existing_daily[:]
-            new_sales = existing_sales[:]
-            new_transfers = existing_transfers[:]
-            d_added = s_added = x_added = 0
-
+            ed = {(e.date, e.coin, round(e.coins_mined, 8)) for e in load_daily()}
+            es = {(e.date, e.base_coin, e.quote_coin, e.side, round(e.amount, 8), round(e.total, 4)) for e in load_sales()}
+            ex = {(e.date, e.coin, e.from_exchange, e.to_exchange, round(e.amount, 8)) for e in load_transfers()}
+            nd, ns, nx = list(load_daily()), list(load_sales()), list(load_transfers())
+            da = sa = xa = 0
             for e in daily_in:
-                entry = DailyMiningEntry(**e)
-                k = make_key_daily(entry)
-                if k not in existing_d_keys:
-                    new_daily.append(entry)
-                    existing_d_keys.add(k)
-                    d_added += 1
-
+                k = (e["date"], e["coin"], round(e["coins_mined"], 8))
+                if k not in ed: nd.append(DailyMiningEntry(**e)); da += 1
             for e in sales_in:
-                entry = TradeEntry(**e)
-                k = make_key_sales(entry)
-                if k not in existing_s_keys:
-                    new_sales.append(entry)
-                    existing_s_keys.add(k)
-                    s_added += 1
-
+                k = (e["date"], e["base_coin"], e["quote_coin"], e["side"], round(e["amount"], 8), round(e["total"], 4))
+                if k not in es: ns.append(TradeEntry(**e)); sa += 1
             for e in transfers_in:
-                entry = TransferEntry(**e)
-                k = make_key_xfer(entry)
-                if k not in existing_x_keys:
-                    new_transfers.append(entry)
-                    existing_x_keys.add(k)
-                    x_added += 1
-
-            save_daily(new_daily)
-            save_sales(new_sales)
-            save_transfers(new_transfers)
-            msg = f"Merge complete:\n  Daily: {d_added} new (skipped {len(daily_in) - d_added})\n  Sales: {s_added} new (skipped {len(sales_in) - s_added})\n  Transfers: {x_added} new (skipped {len(transfers_in) - x_added})"
-
-        # Refresh all tabs
-        self._refresh_data_summary()
-        self._refresh_sales()
-        self._refresh_banner()
-        try:
-            self._refresh_daily()
-        except Exception:
-            pass
-
-        # Log to data tab
-        self._data_log.config(state="normal")
-        self._data_log.delete("1.0", "end")
-        self._data_log.insert("1.0", msg)
-        self._data_log.config(state="disabled")
-
+                k = (e["date"], e["coin"], e["from_exchange"], e["to_exchange"], round(e["amount"], 8))
+                if k not in ex: nx.append(TransferEntry(**e)); xa += 1
+            save_daily(nd); save_sales(ns); save_transfers(nx)
+            msg = f"Merge: Daily +{da}, Sales +{sa}, Transfers +{xa}"
+        self._refresh_data_summary(); self._refresh_sales(); self._refresh_banner()
         messagebox.showinfo("Import Complete", msg)
 
     # ==========================================================
@@ -2262,7 +2609,8 @@ class PRLMiningApp:
             mn = min(values)
             mx = max(values)
             self._trend_summary.config(
-                text=f"  Total: {total:,.4f}  |  Avg: {avg:,.4f}  |  Min: {mn:,.4f}  |  Max: {mx:,.4f}  |  Days: {len(values)}"
+                text=f"  Total: {total:,.4f}  |  Avg: {avg:,.4f}  |  Min: {mn:,.4f}  |  Max: {mx:,.4f}  |  Days: {len(values)}",
+                font=("Consolas", 11, "bold")
             )
 
     def _draw_be_price_chart(self, ax):
@@ -2344,8 +2692,10 @@ class PRLMiningApp:
             avg_be = sum(be_prices) / len(be_prices)
             avg_actual = sum(actual_prices) / len(actual_prices)
             margin = ((avg_actual - avg_be) / avg_be * 100) if avg_be > 0 else 0
+            margin_color = "#2E7D32" if margin >= 0 else "#C62828"
             self._trend_summary.config(
-                text=f"  Avg BE Price: ${avg_be:.4f}  |  Avg Actual: ${avg_actual:.4f}  |  Margin: {margin:+.1f}%"
+                text=f"  Avg BE Price: ${avg_be:.4f}  |  Avg Actual: ${avg_actual:.4f}  |  Margin: {margin:+.1f}%",
+                foreground=margin_color, font=("Consolas", 11, "bold")
             )
 
     def _draw_be_coins_chart(self, ax):
@@ -2423,8 +2773,10 @@ class PRLMiningApp:
             avg_be = sum(be_coins) / len(be_coins)
             avg_actual = sum(actual_coins) / len(actual_coins)
             margin = ((avg_actual - avg_be) / avg_be * 100) if avg_be > 0 else 0
+            margin_color = "#2E7D32" if margin >= 0 else "#C62828"
             self._trend_summary.config(
-                text=f"  Avg BE Coins: {avg_be:.1f}  |  Avg Mined: {avg_actual:.1f}  |  Margin: {margin:+.1f}%"
+                text=f"  Avg BE Coins: {avg_be:.1f}  |  Avg Mined: {avg_actual:.1f}  |  Margin: {margin:+.1f}%",
+                foreground=margin_color, font=("Consolas", 11, "bold")
             )
 
 
